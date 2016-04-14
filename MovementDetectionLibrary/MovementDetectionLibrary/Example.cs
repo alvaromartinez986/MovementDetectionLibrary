@@ -12,11 +12,11 @@ namespace MovementDetectionLibrary
         public static void Main()
         {
             int m = 1;
+            FullBody exm = new FullBody();
             while (m != 0)
-            {
-                FullBody exm = new FullBody();
+            {                
                 m = Console.Read();
-                Console.WriteLine(exm.returnPosition("Head"));
+                Console.WriteLine("Posicion"+exm.returnPosition("Head"));
                 Console.Write("hola");
                 m = Console.Read();
             }
