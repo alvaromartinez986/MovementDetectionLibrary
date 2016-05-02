@@ -7,10 +7,15 @@ using Microsoft.Kinect;
 
 namespace MovementDetectionLibrary
 {
-    class FullBody
+    public class FullBody
     {
-        private Dictionary<string, BodyPoint> pointsBodyCollection;
+        private Dictionary<BodyParts, BodyPoint> pointsBodyCollection;
         private KinectSensor sensorConnection;
+        private Skeleton currentBody;
+        public BodyParts[] namePointsCollection;
+
+        public event BodyChangedHandler BodyChanged;
+        public delegate void BodyChangedHandler(FullBody f, List<BodyPointPosition> e);
 
         public FullBody()
         {
@@ -25,9 +30,32 @@ namespace MovementDetectionLibrary
             {
                 Console.WriteLine("Error, connection failed");
             }
-            pointsBodyCollection = new Dictionary<string, BodyPoint>();
+            pointsBodyCollection = new Dictionary<BodyParts, BodyPoint>();
+            namePointsCollection = new BodyParts [] {
+                BodyParts.HipCenter,
+                BodyParts.Spine,
+                BodyParts.ShoulderCenter,
+                BodyParts.Head,
+                BodyParts.ShoulderLeft,
+                BodyParts.ElbowLeft,
+                BodyParts.WristLeft,
+                BodyParts.HandLeft,
+                BodyParts.ShoulderRight,
+                BodyParts.ElbowRight,
+                BodyParts.WristRight,
+                BodyParts.HandRight,
+                BodyParts.HipLeft,
+                BodyParts.KneeLeft,
+                BodyParts.AnkleLeft,
+                BodyParts.FootLeft,
+                BodyParts.HipRight,
+                BodyParts.KneeRight,
+                BodyParts.AnkleRight,
+                BodyParts.FootRight};
             //connectSensor();
-
+            initBodyPoints();
+            currentBody = new Skeleton();
+            connectSensor();
         }
 
         /**
@@ -60,8 +88,12 @@ namespace MovementDetectionLibrary
             {
                 foreach (Skeleton body in skeletonCollection)
                 {
+                    //Console.WriteLine("Nuevo frame");
                     if (body.TrackingState == SkeletonTrackingState.Tracked)
                     {
+                        Console.WriteLine("Nuevo tracked frame");
+                        currentBody = body;
+                        updateBodyPoints(body);
                         //Console.WriteLine("Skeleton track");
                         verifyBodyPosition(body);
                     }
@@ -74,17 +106,12 @@ namespace MovementDetectionLibrary
         }
 
 
-        private void initBodyPoints(Skeleton body)
+        private void initBodyPoints()
         {
-            
-            String[] namePointsCollection = {"Head", "AnkleLeft", "Left ankle", "AnkleRight", "ElbowLeft", "ElbowRight", "FootLeft",
-                                    "FootRight", "HandLeft", "HandRight", "HandTipLeft", "HandTipRight", "Head", "HipLeft", "HipRight", "KneeLeft",
-                                        "KneeRight", "Neck", "ShoulderLeft", "ShoulderRight", "SpineBase", "SpineMid", "SpineShoulder",
-                                            "ThumbLeft", "ThumbRight", "WristLeft", "WristRight"};
-
-            foreach (String namePoint in namePointsCollection)
+            foreach (BodyParts namePoint in namePointsCollection)
             {
-                BodyPoint jointPoint = new BodyPoint(namePoint, sensorConnection, body);
+                Console.WriteLine("Entra 2");
+                BodyPoint jointPoint = new BodyPoint(namePoint);
 
                 try
                 {
@@ -101,21 +128,56 @@ namespace MovementDetectionLibrary
         }
 
 
-        public float returnPosition(string nameBodyPoint)
+        private void updateBodyPoints(Skeleton body)
         {
-            connectSensor();
+            //BodyParts[] pointsDifferent = { };
+            List<BodyPointPosition> pointsDifferent = new List<BodyPointPosition>();
+            foreach (BodyParts namePoint in namePointsCollection)
+            {
+                try
+                {
+                    BodyPointPosition last = pointsBodyCollection[namePoint].getCurrentPosition();
+                    Console.WriteLine("Llega 3");
+                    BodyPointPosition current = pointsBodyCollection[namePoint].updatePosition(currentBody);
+                    if (last.Equals(current)){
+                        Console.WriteLine("Son iguales");
+                        //Console.WriteLine(pointsBodyCollection[namePoint].pointRepresented.ToString());
+                    } else{
+                        pointsDifferent.Add(last);
+                        Console.WriteLine("Son distintos");
+                        //Console.WriteLine(pointsBodyCollection[namePoint].pointRepresented.ToString());
+
+                        
+                    }
+                    //Console.WriteLine("Actualizo posiciones");
+                }
+                catch
+                {
+                    Console.WriteLine("Exception en updateBodyPoints");
+                }
+
+            }
+
+            
+            BodyChanged(this, pointsDifferent);
+
+        }
+
+
+        public BodyPointPosition returnPosition(BodyParts nameBodyPoint)
+        {
             try
             {
                 BodyPoint pointTrack = pointsBodyCollection[nameBodyPoint];
-
-                return pointTrack.returnPosition();
+                //Console.WriteLine("Llega 1");
+                return pointTrack.getCurrentPosition();
 
             }
             catch
             {
-                Console.WriteLine();
+                Console.WriteLine("Exception");
 
-                return -1;
+                return new BodyPointPosition();
             }
         }
 
@@ -125,7 +187,7 @@ namespace MovementDetectionLibrary
          */
         public int verifyBodyPosition(Skeleton body)
         {
-            initBodyPoints(body);
+            
 
             if (body.ClippedEdges == 0)
             {
